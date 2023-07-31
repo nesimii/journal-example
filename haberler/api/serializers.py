@@ -1,8 +1,37 @@
+from datetime import datetime, date
+
+from django.utils.timesince import timesince
 from rest_framework import serializers
 from haberler.models import Makale
 
 
-class MakaleSerializer(serializers.Serializer):
+class MakaleSerializer(serializers.ModelSerializer):
+    time_since_pub = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Makale
+        fields = '__all__'
+        # fields = ['yazar', 'baslik', 'metin'] #show this fields
+        # exclude = ['yazar', 'baslik', 'metin'] #hide this fields
+        read_only_fields = ['id', 'yaratilma_tarihi', 'guncellenme_tarihi']
+
+    def get_time_since_pub(self, obj):
+        if obj.aktif:
+            return timesince(obj.yayimlanma_tarihi, datetime.now())
+        return 'aktif degil'
+
+    def validate_yayimlanma_tarihi(self, obj):
+        if obj > date.today():
+            raise serializers.ValidationError("Yayimlanma ileri bir tarih olamaz!")
+        return obj
+
+    def validate_baslik(self, value):
+        if len(value) < 20:
+            raise serializers.ValidationError(f'Başlık 20 karakterden az olamaz. karakter sayısı: {len(value)}')
+        return value
+
+
+class MakaleDefaultSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     yazar = serializers.CharField()
     baslik = serializers.CharField()
